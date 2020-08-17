@@ -1,7 +1,11 @@
 import pandas as pd
+import numpy as np
 import tkinter
 import tkinter.ttk
 
+# index number
+number = 0
+print(type(number))
 # 파일 로드
 test_df = pd.read_csv("df_list.csv")
 # 인덱스 중복 제거
@@ -10,13 +14,13 @@ test_df = test_df.drop(test_df.columns[1], axis=1)
 data = {"번호":["0"],"브랜드":["야마하"],"품명":["코리아 뷰 거울"],"종류":["핸들미러"],"개수":[2],"입고가격":["35,676"],"소비자가격":["32,000"],"위치":["창고"],"품목코드":["A100"]}
 
 df_list = pd.DataFrame(data, columns = ["번호","브랜드","품명","종류","개수","입고가격","소비자가격","위치","품목코드"])
-
+df_list.info(memory_usage='deep')
 # GUI
 window=tkinter.Tk()
 window.geometry("1000x600")
 
 # 텍스트들
-number = tkinter.Label(window, text="번호").grid(row=0, column=0)
+
 brand = tkinter.Label(window, text="브랜드").grid(row=0, column=1)
 item_name = tkinter.Label(window, text="품명").grid(row=0, column=2)
 item_category = tkinter.Label(window, text="종류").grid(row=0, column=3)
@@ -30,8 +34,7 @@ del_index = tkinter.Label(window, text="삭제할 품목 번호").grid(row=0, co
 search_item = tkinter.Label(window, text="품목 검색").grid(row=0, column=11)
 
 # 엔트리들
-entry_number = tkinter.Entry(window, width = 10)
-entry_number.grid(row=1, column=0)
+
 entry_brand = tkinter.Entry(window, width = 10)
 entry_brand.grid(row=1, column=1)
 entry_item_name = tkinter.Entry(window, width = 10)
@@ -56,7 +59,15 @@ entry_search_item = tkinter.Entry(window, width = 10)
 entry_search_item.grid(row=1, column=11)
 
 def data_add(event):
-    number = entry_number.get()
+    global number
+
+    try:
+        number = int(number)
+        number += 1
+    except TypeError:
+        print("type error")
+        number = 1
+
     brand = entry_brand.get()
     item_name = entry_item_name.get()
     item_category = entry_item_category.get()
@@ -74,43 +85,50 @@ def data_add(event):
 
 def data_del(event):
 
+    global number
     
     #df 에서 삭제
     global df_list
     del_index = int(entry_del_index.get())
     df_list=df_list.drop(del_index)
+
     # df 인덱스 리셋
     df_list = df_list.reset_index()
     del df_list['index']
+
+    for i in range(len(treeview.get_children())):
+        df_list['번호'][i] = i
+
     print("test: ",treeview.item(treeview.selection()))
+
+    # df number 리셋
 
 
     #del_index = treeview.get_children()[del_index]
-    
-    
-    #treeview 에서 삭제
-    child_id = treeview.get_children()[del_index]
-    treeview.delete(child_id)
-    
-    # treeview 인덱스 조정
-    # treeview의 아이템 인덱스 = del_index
-    # treeview.index(child_id+1) = child_id
-    
-    #len(treeview.get_children())
 
-   
-    '''
-    test=[]
-    for j in len()
-    
-    leaves = treeview.get_children()[del_index]
-    for i in leaves:
-        treeview.move(i, treeview.parent(i), treeview.index(i)-1)
-    '''
+    #treeview 에서 삭제
+    number -= 1
+    values_list = []
+
+    for i in range(len(treeview.get_children())-del_index):
+        if i == 0:
+            child_id = treeview.get_children()[del_index]
+            treeview.delete(child_id)
+        else:
+            #print(len(treeview.get_children()), " ~ ", len(treeview.get_children()) - del_index, " / ", del_index + i-1)
+
+            child_id = treeview.get_children()[del_index+i-1]
+            values_list.append(treeview.item(child_id)["values"])
+
+            values_list[i-1][0] -= 1
+            #print("===> ",values_list[del_index-2+i])
+            treeview.item(child_id, values=(values_list[del_index-2+i]))  # 핵심
+
+    # brand,item_name,item_category,item_count,wearing_price,retail_price,item_loc,item_code,modify_index,del_index
+
     print(df_list)
 
-    
-    
+
 def data_modify(evnet):
 
     input_values = []; input_values.append(entry_number.get())
@@ -143,8 +161,6 @@ def data_modify(evnet):
 
     # df_list에서 바뀌게 하기
     for item,input_value,tmp_data in zip(list(df_list),input_values, tmp_save_data):
-        
-
         # 값이 없다면 원래 있던 값 입력
         if value == "":
             df_list.loc[modify_index,item] = tmp_data
@@ -170,7 +186,7 @@ def data_search(event):
     while i <= len(df_list)-1:
         if search_item in df_list.loc[i,"품명"]:
             searched_item.append(df_list.loc[i,"품명"])
-            searched_item_code.append(df_list.loc[i,"품목코드"])
+            searched_item_code.append(df_list.loc[i,"번호"])
 
         i += 1
         
@@ -189,7 +205,7 @@ def data_search(event):
     searched_treeview.heading("#0")
 
     searched_treeview.column("번호", width=70, anchor="center")
-    searched_treeview.heading("번호", text="브랜드", anchor="center")
+    searched_treeview.heading("번호", text="번호", anchor="center")
     searched_treeview.column("브랜드", width=100, anchor="center")
     searched_treeview.heading("브랜드", text="브랜드", anchor="center")
     searched_treeview.column("품명", width=130, anchor="center")
@@ -211,8 +227,8 @@ def data_search(event):
     df_list_searched = pd.DataFrame()
 
     for i in range(len(searched_item_code)):
-        df_list[df_list['품목코드'] == searched_item_code[i]]
-        df_list_searched = pd.concat([df_list_searched,df_list[df_list['품목코드'] == searched_item_code[i]]])
+        df_list[df_list['번호'] == searched_item_code[i]]
+        df_list_searched = pd.concat([df_list_searched,df_list[df_list['번호'] == searched_item_code[i]]])
         
     searched_list = df_list_searched.values.tolist()
     
@@ -223,7 +239,7 @@ def data_search(event):
   
 # 버튼들
 btn_add = tkinter.Button(window, text="추가")
-btn_add.grid(row=2, column=0)
+btn_add.grid(row=2, column=1)
 btn_add.bind('<Button-1>',data_add)
 
 btn_del = tkinter.Button(window, text="삭제")
@@ -288,6 +304,7 @@ print("=============")
 data_list = df_list.values.tolist()
 
 for i in range(len(data_list)):
-    treeview.insert('', 'end', text=i, values=data_list[i], iid=str(i)+"번:")
+    treeview.insert('', 'end', text=str(i), values=data_list[i], iid=str(i)+"번:")
     # [야마하, 핸드미러, ...]
 print(treeview['columns'])
+window.mainloop()
